@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, CheckCircle2, AlertCircle, Play, Send, Calculator, RotateCcw, PieChart, Info, User, X, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, CheckCircle2, AlertCircle, Play, Send, Calculator, RotateCcw, PieChart, Info, User, X, HelpCircle, Camera } from 'lucide-react';
 import { ProblemData, AssessmentResult } from '../types';
 import { gradeMacronutrientSubmission } from '../services/geminiService';
 
@@ -79,6 +79,11 @@ const MacronutrientActivity: React.FC = () => {
   useEffect(() => {
     setProblem(generateProblem());
   }, []);
+
+  const nextButtonLabel = useMemo(() => {
+    const labels = ["Give it Another Shot", "New Attempt", "Practise Again", "Next Challenge", "Try Another One", "New Client Profile"];
+    return labels[Math.floor(Math.random() * labels.length)];
+  }, [result]);
 
   const handleNextProblem = () => {
     setProblem(generateProblem());
@@ -391,10 +396,28 @@ const MacronutrientActivity: React.FC = () => {
                   </div>
                 )}
                 
-                <div className="mt-4 pt-4 border-t border-slate-100">
-                   <p className="text-sm text-slate-600 italic text-center">
-                    Nutrition is a numbers game. Try another client to ensure you've mastered the conversions.
-                  </p>
+                {/* Padlet Link Section */}
+                <div className="mt-4 p-4 bg-slate-900 rounded-xl flex flex-col gap-3">
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-white/10 rounded-lg text-white">
+                            <Camera className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-white text-sm">Evidence of Completion</h4>
+                            <p className="text-xs text-slate-300 mt-1">
+                                Take a screenshot of your work (including this feedback) and upload it to your personal Padlet.
+                            </p>
+                        </div>
+                    </div>
+                    <a 
+                        href="https://padlet.com/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="w-full flex items-center justify-center gap-2 bg-white text-slate-900 py-2 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
+                    >
+                        <img src="https://res.cloudinary.com/dlshlye2v/image/upload/v1769796954/Padlet_Logo_o4n9m5.png" alt="" className="w-5 h-5 object-contain" />
+                        Open Padlet
+                    </a>
                 </div>
               </div>
 
@@ -411,7 +434,7 @@ const MacronutrientActivity: React.FC = () => {
                   onClick={handleNextProblem}
                   className="flex-1 py-3 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
                 >
-                  <Play className="w-4 h-4" /> Next Client
+                  <Play className="w-4 h-4" /> {nextButtonLabel}
                 </button>
               </div>
             </div>

@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, CheckCircle2, AlertCircle, Play, Send, ScanLine, RotateCcw, MessageSquare, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, CheckCircle2, AlertCircle, Play, Send, ScanLine, RotateCcw, MessageSquare, AlertTriangle, Camera } from 'lucide-react';
 import { ProblemData, AssessmentResult } from '../types';
 import { gradeFoodLabelSubmission } from '../services/geminiService';
 
@@ -90,6 +90,11 @@ const FoodLabelActivity: React.FC = () => {
   useEffect(() => {
     setProblem(generateProblem());
   }, []);
+
+  const nextButtonLabel = useMemo(() => {
+    const labels = ["Analyze Another", "Next Product", "Try Another Label", "New Product", "Practice Again"];
+    return labels[Math.floor(Math.random() * labels.length)];
+  }, [result]);
 
   const handleNextProblem = () => {
     setProblem(generateProblem());
@@ -286,6 +291,30 @@ const FoodLabelActivity: React.FC = () => {
                         <p className="text-slate-600 text-sm leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-100">
                             {result.feedback}
                         </p>
+
+                        {/* Padlet Link Section */}
+                        <div className="mt-4 p-4 bg-slate-900 rounded-xl flex flex-col gap-3">
+                            <div className="flex items-start gap-3">
+                                <div className="p-2 bg-white/10 rounded-lg text-white">
+                                    <Camera className="w-5 h-5" />
+                                </div>
+                                <div>
+                                    <h4 className="font-bold text-white text-sm">Evidence of Completion</h4>
+                                    <p className="text-xs text-slate-300 mt-1">
+                                        Take a screenshot of your work (including this feedback) and upload it to your personal Padlet.
+                                    </p>
+                                </div>
+                            </div>
+                            <a 
+                                href="https://padlet.com/" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="w-full flex items-center justify-center gap-2 bg-white text-slate-900 py-2 rounded-lg font-bold text-sm hover:bg-slate-100 transition-colors"
+                            >
+                                <img src="https://res.cloudinary.com/dlshlye2v/image/upload/v1769796954/Padlet_Logo_o4n9m5.png" alt="" className="w-5 h-5 object-contain" />
+                                Open Padlet
+                            </a>
+                        </div>
                     </div>
 
                     <div className="p-4 bg-slate-50 border-t border-slate-200 flex gap-3">
@@ -301,7 +330,7 @@ const FoodLabelActivity: React.FC = () => {
                         onClick={handleNextProblem}
                         className="flex-1 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
                         >
-                        <Play className="w-4 h-4" /> Next Product
+                        <Play className="w-4 h-4" /> {nextButtonLabel}
                         </button>
                     </div>
                 </div>

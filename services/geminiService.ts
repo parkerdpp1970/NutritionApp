@@ -2,13 +2,37 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ProblemData, UserSubmission, MuscleMassSubmission, TargetCompositionSubmission, GoalSettingSubmission, EnergyExpenditureSubmission, MacronutrientSubmission, FoodLabelSubmission, AssessmentResult } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to safely get API Key
+const getApiKey = () => {
+  // OPTION 1: If you are manually uploading files and cannot set environment variables,
+  // paste your API key inside the quotes below (e.g., "AIzaSy...").
+  // WARNING: Do not share this file publicly if it contains your key.
+  const MANUAL_API_KEY = "";
+
+  if (MANUAL_API_KEY) return MANUAL_API_KEY;
+
+  try {
+    // OPTION 2: Standard Environment Variable (Netlify/Vite/Node)
+    // This is the recommended secure way. Set 'API_KEY' in your Netlify Site Settings.
+    if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+      return process.env.API_KEY;
+    }
+  } catch (e) {
+    // Ignore errors if process is not defined
+  }
+  
+  return undefined;
+};
 
 export const gradeStudentSubmission = async (
   problem: ProblemData,
   submission: UserSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student has submitted an answer for a Body Composition calculation exercise.
       
@@ -49,9 +73,11 @@ export const gradeStudentSubmission = async (
               properties: {
                 bfm: { type: Type.NUMBER },
                 ffm: { type: Type.NUMBER }
-              }
+              },
+              required: ["bfm", "ffm"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -63,15 +89,23 @@ export const gradeStudentSubmission = async (
 
     return JSON.parse(text) as AssessmentResult;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing submission:", error);
+    
+    // Fallback calculation for error state
     const correctBFM = problem.weightKg * (problem.bodyFatPercentage / 100);
     const correctFFM = problem.weightKg - correctBFM;
+    
+    let msg = "There was an error connecting to the grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
+
     return {
       isCorrect: false,
       score: 0,
-      feedback: "There was an error connecting to the grading assistant. Please check your internet connection.",
-      reasoningCritique: "Unable to analyse reasoning.",
+      feedback: `${msg} (${error.message || 'Unknown Error'})`,
+      reasoningCritique: "Unable to analyse reasoning due to connection error.",
       corrections: {
         bfm: Number(correctBFM.toFixed(2)),
         ffm: Number(correctFFM.toFixed(2))
@@ -85,6 +119,10 @@ export const gradeMuscleMassSubmission = async (
   submission: MuscleMassSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student is estimating Skeletal Muscle Mass (SMM) based on Fat-Free Mass (FFM).
       
@@ -133,9 +171,11 @@ export const gradeMuscleMassSubmission = async (
                 ffm: { type: Type.NUMBER },
                 smm: { type: Type.NUMBER },
                 smmPercent: { type: Type.NUMBER }
-              }
+              },
+              required: ["ffm", "smm", "smmPercent"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -147,12 +187,16 @@ export const gradeMuscleMassSubmission = async (
 
     return JSON.parse(text) as AssessmentResult;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing muscle mass submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {
         ffm: 0,
@@ -168,6 +212,10 @@ export const gradeTargetCompositionSubmission = async (
   submission: TargetCompositionSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student is calculating the Target Body Mass required to achieve a specific body fat percentage, assuming Fat-Free Mass (FFM) remains constant.
       
@@ -215,9 +263,11 @@ export const gradeTargetCompositionSubmission = async (
                 ffm: { type: Type.NUMBER },
                 targetBodyMass: { type: Type.NUMBER },
                 massLossRequired: { type: Type.NUMBER }
-              }
+              },
+              required: ["ffm", "targetBodyMass", "massLossRequired"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -229,12 +279,16 @@ export const gradeTargetCompositionSubmission = async (
 
     return JSON.parse(text) as AssessmentResult;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing target composition submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {
         ffm: 0,
@@ -250,6 +304,10 @@ export const gradeGoalSettingSubmission = async (
   submission: GoalSettingSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student is setting a SMART goal for a client based on physiological data and lifestyle constraints.
       
@@ -309,9 +367,11 @@ export const gradeGoalSettingSubmission = async (
                 currentFatMass: { type: Type.NUMBER },
                 fatLossWeeks: { type: Type.NUMBER },
                 muscleGainMonths: { type: Type.NUMBER }
-              }
+              },
+              required: ["currentFatMass"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -323,13 +383,17 @@ export const gradeGoalSettingSubmission = async (
 
     return JSON.parse(text) as AssessmentResult;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing goal setting submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     const fm = problem.weightKg * (problem.bodyFatPercentage / 100);
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {
         currentFatMass: Number(fm.toFixed(2)),
@@ -345,6 +409,10 @@ export const gradeEnergyExpenditureSubmission = async (
   submission: EnergyExpenditureSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student is calculating Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE).
       
@@ -391,9 +459,11 @@ export const gradeEnergyExpenditureSubmission = async (
               properties: {
                 bmr: { type: Type.NUMBER },
                 tdee: { type: Type.NUMBER }
-              }
+              },
+              required: ["bmr", "tdee"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -404,12 +474,16 @@ export const gradeEnergyExpenditureSubmission = async (
     }
 
     return JSON.parse(text) as AssessmentResult;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing energy expenditure submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {
         bmr: 0,
@@ -424,6 +498,10 @@ export const gradeMacronutrientSubmission = async (
   submission: MacronutrientSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutrition Professor. A student is calculating Macronutrient Gram targets based on a client's TDEE and a specific macronutrient percentage split.
       
@@ -470,9 +548,11 @@ export const gradeMacronutrientSubmission = async (
                 carbsGrams: { type: Type.NUMBER },
                 proteinGrams: { type: Type.NUMBER },
                 fatGrams: { type: Type.NUMBER },
-              }
+              },
+              required: ["carbsGrams", "proteinGrams", "fatGrams"]
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback", "corrections"]
         }
       }
     });
@@ -483,12 +563,16 @@ export const gradeMacronutrientSubmission = async (
     }
 
     return JSON.parse(text) as AssessmentResult;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing macronutrient submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {
         carbsGrams: 0,
@@ -504,6 +588,10 @@ export const gradeFoodLabelSubmission = async (
   submission: FoodLabelSubmission
 ): Promise<AssessmentResult> => {
   try {
+    const apiKey = getApiKey();
+    if (!apiKey) throw new Error("MISSING_KEY");
+
+    const ai = new GoogleGenAI({ apiKey });
     const prompt = `
       You are an expert Nutritionist assessing a student's ability to interpret food labels according to UK labelling laws.
       
@@ -547,10 +635,12 @@ export const gradeFoodLabelSubmission = async (
             corrections: {
               type: Type.OBJECT,
               properties: {
-                // No specific numeric corrections needed for text analysis
+                // Defines a placeholder for schema consistency, though this function relies mostly on text feedback
+                guidance: { type: Type.STRING } 
               }
             }
-          }
+          },
+          required: ["isCorrect", "score", "feedback"]
         }
       }
     });
@@ -561,12 +651,16 @@ export const gradeFoodLabelSubmission = async (
     }
 
     return JSON.parse(text) as AssessmentResult;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error assessing food label submission:", error);
+    let msg = "Error connecting to grading assistant.";
+    if (error.message === "MISSING_KEY" || (error.message && (error.message.includes("API Key") || error.message.includes("API_KEY")))) {
+      msg = "Configuration Error: API Key is missing. Please set 'API_KEY' in Netlify Environment Variables or update 'services/geminiService.ts'.";
+    }
     return {
       isCorrect: false,
       score: 0,
-      feedback: "Error connecting to grading assistant.",
+      feedback: `${msg} (${error.message || 'Unknown'})`,
       reasoningCritique: "N/A",
       corrections: {}
     };

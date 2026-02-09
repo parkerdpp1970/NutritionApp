@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Calculator, BicepsFlexed, FileText, Target, TrendingUp, Calendar, ChevronDown, Scale, Info, Presentation, Users, Activity, Layers, Play, Zap, UserCircle, PieChart, ScanLine, GraduationCap, ClipboardCheck } from 'lucide-react';
+import { BookOpen, Calculator, BicepsFlexed, FileText, Target, TrendingUp, Calendar, ChevronDown, Scale, Info, Presentation, Users, Activity, Layers, Play, Zap, UserCircle, PieChart, ScanLine, GraduationCap, ClipboardCheck, Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -22,12 +22,18 @@ interface ActivityGroup {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => {
-  const [openActivity, setOpenActivity] = useState<number | null>(1);
-  const [bodyCompOpen, setBodyCompOpen] = useState(true);
-  const [energyExpOpen, setEnergyExpOpen] = useState(true);
-  const [nutritionOpen, setNutritionOpen] = useState(true);
-  const [foodLabelOpen, setFoodLabelOpen] = useState(true);
-  const [caseStudiesOpen, setCaseStudiesOpen] = useState(true);
+  const [openActivity, setOpenActivity] = useState<number | null>(null);
+  
+  // Sidebar visibility states
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isDesktopOpen, setIsDesktopOpen] = useState(true);
+
+  // Group open states
+  const [bodyCompOpen, setBodyCompOpen] = useState(false);
+  const [energyExpOpen, setEnergyExpOpen] = useState(false);
+  const [nutritionOpen, setNutritionOpen] = useState(false);
+  const [foodLabelOpen, setFoodLabelOpen] = useState(false);
+  const [caseStudiesOpen, setCaseStudiesOpen] = useState(false);
 
   const activities: ActivityGroup[] = [
     {
@@ -167,43 +173,30 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
 
   // Auto-expand the group containing the active tab
   useEffect(() => {
-    activities.forEach(group => {
-      if (group.items.some(item => item.id === activeTab)) {
-        setOpenActivity(group.id);
-        setBodyCompOpen(true);
-      }
-    });
-    energyActivities.forEach(group => {
-        if (group.items.some(item => item.id === activeTab)) {
-            setOpenActivity(group.id);
-            setEnergyExpOpen(true);
+    const expandGroup = (groups: ActivityGroup[], setOpen: React.Dispatch<React.SetStateAction<boolean>>) => {
+        if (groups.some(group => group.items.some(item => item.id === activeTab))) {
+            setOpenActivity(groups.find(group => group.items.some(item => item.id === activeTab))?.id || null);
+            setOpen(true);
         }
-    });
-    nutritionActivities.forEach(group => {
-        if (group.items.some(item => item.id === activeTab)) {
-            setOpenActivity(group.id);
-            setNutritionOpen(true);
-        }
-    });
-    foodLabelActivities.forEach(group => {
-        if (group.items.some(item => item.id === activeTab)) {
-            setOpenActivity(group.id);
-            setFoodLabelOpen(true);
-        }
-    });
-    caseStudyActivities.forEach(group => {
-        if (group.items.some(item => item.id === activeTab)) {
-            setOpenActivity(group.id);
-            setCaseStudiesOpen(true);
-        }
-    });
+    };
+
+    expandGroup(activities, setBodyCompOpen);
+    expandGroup(energyActivities, setEnergyExpOpen);
+    expandGroup(nutritionActivities, setNutritionOpen);
+    expandGroup(foodLabelActivities, setFoodLabelOpen);
+    expandGroup(caseStudyActivities, setCaseStudiesOpen);
   }, [activeTab]);
 
   const toggleActivity = (id: number) => {
     setOpenActivity(openActivity === id ? null : id);
   };
 
-  const renderGroup = (group: ActivityGroup, colorClass: string, hoverClass: string) => {
+  const handleNavClick = (id: string) => {
+    onTabChange(id);
+    setIsMobileOpen(false); // Close sidebar on mobile when item clicked
+  };
+
+  const renderGroup = (group: ActivityGroup, colorClass: string) => {
      const isOpen = openActivity === group.id;
      const Icon = group.icon;
      const isActiveGroup = group.items.some(item => item.id === activeTab);
@@ -241,7 +234,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
                 return (
                 <button
                     key={item.id}
-                    onClick={() => onTabChange(item.id)}
+                    onClick={() => handleNavClick(item.id)}
                     className={`w-full flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-all ${
                     isActive
                         ? `bg-white text-${colorClass}-700 font-semibold shadow-sm border border-slate-100`
@@ -260,22 +253,48 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-slate-50">
+    <div className="flex h-screen bg-slate-50 overflow-hidden">
+      
+      {/* Mobile Backdrop */}
+      {isMobileOpen && (
+        <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity duration-300" 
+            onClick={() => setIsMobileOpen(false)} 
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-full md:w-72 bg-white border-r border-slate-200 flex-shrink-0 flex flex-col h-screen sticky top-0 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-10">
-        <div className="p-6 border-b border-slate-100 flex-shrink-0 flex items-center gap-3">
-          <div className="bg-primary-600 p-2 rounded-lg text-white">
-            <BookOpen className="w-6 h-6" />
+      <aside 
+        className={`
+            fixed md:static inset-y-0 left-0 z-50 h-full bg-white border-r border-slate-200 flex flex-col transition-all duration-300 ease-in-out shadow-2xl md:shadow-none
+            ${isMobileOpen ? 'translate-x-0 w-72' : '-translate-x-full w-72'} 
+            md:translate-x-0
+            ${isDesktopOpen ? 'md:w-80' : 'md:w-0 md:border-none md:overflow-hidden'}
+        `}
+      >
+        <div className="p-4 border-b border-slate-100 flex-shrink-0 flex items-center justify-between min-h-[4.5rem]">
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="bg-primary-600 p-2 rounded-lg text-white flex-shrink-0">
+                <BookOpen className="w-5 h-5" />
+            </div>
+            <div className="overflow-hidden">
+                <span className="font-bold text-lg tracking-tight text-slate-900 block leading-none whitespace-nowrap">Learner Activities</span>
+            </div>
           </div>
-          <div>
-             <span className="font-bold text-lg tracking-tight text-slate-900 block leading-none">Learner Activities</span>
-          </div>
+          {/* Close Sidebar Button */}
+          <button 
+            onClick={() => { setIsMobileOpen(false); setIsDesktopOpen(false); }}
+            className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+            title="Close Panel"
+          >
+            <PanelLeftClose className="w-5 h-5" />
+          </button>
         </div>
 
-        <nav className="p-4 space-y-2 overflow-y-auto flex-1 custom-scrollbar">
-          {/* Course Aims Button (Was Intro) */}
+        <nav className="p-4 space-y-2 overflow-y-auto flex-1 custom-scrollbar min-w-[18rem]">
+          {/* Course Aims Button */}
           <button
-            onClick={() => onTabChange('aims')}
+            onClick={() => handleNavClick('aims')}
             className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all duration-200 mb-1 ${
               activeTab === 'aims'
                 ? 'bg-slate-900 text-white shadow-md'
@@ -307,7 +326,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
             
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${bodyCompOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-6 my-1">
-                  {activities.map((group) => renderGroup(group, 'primary', 'primary'))}
+                  {activities.map((group) => renderGroup(group, 'primary'))}
                 </div>
             </div>
           </div>
@@ -331,7 +350,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
             
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${energyExpOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-6 my-1">
-                  {energyActivities.map((group) => renderGroup(group, 'amber', 'amber'))}
+                  {energyActivities.map((group) => renderGroup(group, 'amber'))}
                 </div>
             </div>
           </div>
@@ -355,7 +374,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
             
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${nutritionOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-6 my-1">
-                  {nutritionActivities.map((group) => renderGroup(group, 'orange', 'orange'))}
+                  {nutritionActivities.map((group) => renderGroup(group, 'orange'))}
                 </div>
             </div>
           </div>
@@ -379,7 +398,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
             
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${foodLabelOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-6 my-1">
-                  {foodLabelActivities.map((group) => renderGroup(group, 'purple', 'purple'))}
+                  {foodLabelActivities.map((group) => renderGroup(group, 'purple'))}
                 </div>
             </div>
           </div>
@@ -403,7 +422,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
             
             <div className={`overflow-hidden transition-all duration-300 ease-in-out ${caseStudiesOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}>
                 <div className="pl-2 space-y-1 border-l-2 border-slate-100 ml-6 my-1">
-                  {caseStudyActivities.map((group) => renderGroup(group, 'teal', 'teal'))}
+                  {caseStudyActivities.map((group) => renderGroup(group, 'teal'))}
                 </div>
             </div>
           </div>
@@ -411,10 +430,45 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
         </nav>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto h-screen bg-slate-50 scroll-smooth">
-        <div className={`mx-auto p-6 md:p-12 pb-32 ${activeTab === 'lesson' || activeTab === 'energy-lesson' || activeTab === 'case-studies' ? 'max-w-[1600px]' : 'max-w-5xl'}`}>
-          {children}
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col h-full bg-slate-50 relative overflow-hidden">
+        
+        {/* Toggle Bar (Visible on Mobile or when Desktop Sidebar is closed) */}
+        <div className={`
+            flex items-center p-4 z-30 transition-all duration-300
+            ${!isDesktopOpen ? 'md:absolute md:top-4 md:left-4 md:p-0' : 'md:hidden'}
+            bg-white/80 backdrop-blur-sm md:bg-transparent border-b border-slate-200 md:border-none
+        `}>
+            {/* Mobile Trigger */}
+            <button 
+                onClick={() => setIsMobileOpen(true)}
+                className="md:hidden p-2 bg-white rounded-lg border border-slate-200 shadow-sm text-slate-700 hover:bg-slate-50 mr-3"
+            >
+                <Menu className="w-5 h-5" />
+            </button>
+
+            {/* Desktop Trigger (Open) */}
+            <button
+                onClick={() => setIsDesktopOpen(true)}
+                className={`
+                    hidden md:flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-slate-200 shadow-sm text-slate-700 hover:bg-slate-50 hover:text-primary-600 transition-all
+                    ${isDesktopOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+                `}
+            >
+                <PanelLeftOpen className="w-5 h-5" />
+                <span className="font-semibold text-sm">Activities</span>
+            </button>
+
+            {/* Mobile Title */}
+            <span className="md:hidden font-bold text-slate-900 truncate ml-1">
+                Nutrition Activities
+            </span>
+        </div>
+
+        <div className="flex-1 overflow-y-auto scroll-smooth p-4 md:p-12 pb-32">
+          <div className={`mx-auto transition-all duration-300 ${activeTab === 'lesson' || activeTab === 'energy-lesson' || activeTab === 'case-studies' ? 'max-w-[1600px]' : 'max-w-5xl'}`}>
+            {children}
+          </div>
         </div>
       </main>
     </div>
